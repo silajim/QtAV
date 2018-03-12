@@ -27,6 +27,9 @@
 #include "VideoThread.h"
 #include <QtCore/QTime>
 #include "utils/Logger.h"
+#include <QElapsedTimer>
+#include <QTime>
+#include <QDebug>
 
 #define RESUME_ONCE_ON_SEEK 0
 
@@ -314,6 +317,11 @@ void AVDemuxThread::pauseInternal(bool value)
     paused = value;
 }
 
+void AVDemuxThread::setNetwork(bool network)
+{
+    m_network = network;
+}
+
 bool AVDemuxThread::isPaused() const
 {
     return paused;
@@ -344,7 +352,7 @@ void AVDemuxThread::updateBufferState()
     if (m_buffering == m_buffer->isBuffering())
         return;
     m_buffering = m_buffer->isBuffering();
-    Q_EMIT mediaStatusChanged(m_buffering ? QtAV::BufferingMedia : QtAV::BufferedMedia);
+    //Q_EMIT mediaStatusChanged(m_buffering ? QtAV::BufferingMedia : QtAV::BufferedMedia);
     // state change to buffering, report progress immediately. otherwise we have to wait to read 1 packet.
     if (m_buffering) {
         Q_EMIT bufferProgressChanged(m_buffer->bufferProgress());
@@ -441,7 +449,7 @@ void AVDemuxThread::seekOnPauseFinished()
     if (user_paused) {
         pause(true); // restore pause state
         Q_EMIT requestClockPause(true); // need direct connection
-    // pause video/audio thread
+        // pause video/audio thread
         if (video_thread)
             video_thread->pause(true);
         if (audio_thread)
@@ -460,7 +468,7 @@ void AVDemuxThread::frameDeliveredOnStepForward()
     if (user_paused) {
         pause(true); // restore pause state
         Q_EMIT requestClockPause(true); // need direct connection
-    // pause both video and audio thread
+        // pause both video and audio thread
         if (video_thread)
             video_thread->pause(true);
         if (audio_thread)
@@ -495,6 +503,8 @@ void AVDemuxThread::eofDecodedOnStepForward()
 
 void AVDemuxThread::onAVThreadQuit()
 {
+    qDebug() << Q_FUNC_INFO;
+
     AVThread* av[] = { audio_thread, video_thread};
     for (size_t i = 0; i < sizeof(av)/sizeof(av[0]); ++i) {
         if (!av[i])
@@ -551,6 +561,8 @@ void AVDemuxThread::run()
 
     AutoSem as(&sem);
     Q_UNUSED(as);
+    QElapsedTimer timer;
+    timer.start();
     while (!end) {
         processNextSeekTask();
         //vthread maybe changed by AVPlayer.setPriority() from no dec case
@@ -576,6 +588,7 @@ void AVDemuxThread::run()
                     vqueue->put(Packet::createEOF());
                 vqueue->blockEmpty(was_end >= kMaxEof);
             }
+
             if (m_buffering) {
                 m_buffering = false;
                 Q_EMIT mediaStatusChanged(QtAV::BufferedMedia);
@@ -600,6 +613,47 @@ void AVDemuxThread::run()
             msleep(100);
             continue;
         }
+
+        qint64 buffered = m_buffer->buffered();
+
+        if(m_network){
+
+            if(buffered>0){
+
+                qDebug() << "Duration" << demuxer->duration() << "Time elapsed" << timer.elapsed() << "buffered" << buffered;
+                qreal remainingTime = (demuxer->duration() * timer.elapsed()) / buffered; // Calculate buffer remaining Time, playing can start once the remainingTime is less than the file duration
+                //            m_buffer->setBufferValue(remainingTime - demuxer->duration());
+
+                QTime time(0,0,0);
+                time = time.addMSecs(remainingTime);
+
+
+                qDebug() << "Remaining Download Time" <<  time.toString() << "msecs" << remainingTime;
+                //            if(remainingTime < demuxer->duration() && !m_buffer->isFull()){
+                //                qDebug() << "Still Buffering";
+                //                m_buffering = true;
+                //                Q_EMIT mediaStatusChanged(QtAV::BufferingMedia);
+                //            }else{
+                //                 qDebug() << "Buffering Ok";
+                //                Q_EMIT mediaStatusChanged(QtAV::BufferedMedia);
+                //            }
+
+                if(!m_buffer->isFull()){
+                    qDebug() << "Still Buffering";
+                    m_buffering = true;
+                    Q_EMIT mediaStatusChanged(QtAV::BufferingMedia);
+                }else{
+                    qDebug() << "Buffering Ok";
+                    Q_EMIT mediaStatusChanged(QtAV::BufferedMedia);
+                }
+
+            }else{
+                qDebug() << "m_buffer->buffered() empty";
+                m_buffering = true;
+                Q_EMIT mediaStatusChanged(QtAV::BufferingMedia);
+            }
+        }
+
         if (demuxer->mediaStatus() == StalledMedia) {
             qDebug("stalled media. exiting demuxing thread");
             break;

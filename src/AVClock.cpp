@@ -169,6 +169,9 @@ void AVClock::start()
 //remember last value because we don't reset  pts_, pts_v, delay_
 void AVClock::pause(bool p)
 {
+
+    qDebug() << Q_FUNC_INFO << p;
+
     if (isPaused() == p)
         return;
     if (clock_type == AudioClock)

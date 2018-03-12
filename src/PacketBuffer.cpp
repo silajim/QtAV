@@ -21,6 +21,7 @@
 
 #include "PacketBuffer.h"
 #include <QtCore/QDateTime>
+#include <QDebug>
 
 namespace QtAV {
 static const int kAvgSize = 16;
@@ -84,7 +85,10 @@ qreal PacketBuffer::bufferMax() const
 
 qint64 PacketBuffer::buffered() const
 {
-    Q_ASSERT(m_value1 >= m_value0);
+    qDebug() << Q_FUNC_INFO << "m_value1" << m_value1 << "value0" << m_value0;
+
+    if(m_value1 <= m_value0)
+        return 0;
     return m_value1 - m_value0;
 }
 
@@ -109,6 +113,11 @@ qreal PacketBuffer::bufferSpeedInBytes() const
     return calc_speed(true);
 }
 
+bool PacketBuffer::isFull()
+{
+    return checkFull();
+}
+
 bool PacketBuffer::checkEnough() const
 {
     return buffered() >= bufferValue();
@@ -116,6 +125,7 @@ bool PacketBuffer::checkEnough() const
 
 bool PacketBuffer::checkFull() const
 {
+    qDebug() << Q_FUNC_INFO << (buffered() >= qint64(qreal(bufferValue())*bufferMax()));
     return buffered() >= qint64(qreal(bufferValue())*bufferMax());
 }
 
@@ -124,8 +134,8 @@ void PacketBuffer::onPut(const Packet &p)
     if (m_mode == BufferTime) {
         m_value1 = qint64(p.pts*1000.0); // FIXME: what if no pts
         m_value0 = qint64(queue[0].pts*1000.0); // must compute here because it is reset to 0 if take from empty
-        //if (isBuffering())
-          //  qDebug("+buffering progress: %.1f%%=%.1f/%.1f~%.1fs %d-%d", bufferProgress()*100.0, (qreal)buffered()/1000.0, (qreal)bufferValue()/1000.0, qreal(bufferValue())*bufferMax()/1000.0, m_value1, m_value0);
+        if (isBuffering())
+            qDebug("+buffering progress: %.1f%%=%.1f/%.1f~%.1fs %d-%d", bufferProgress()*100.0, (qreal)buffered()/1000.0, (qreal)bufferValue()/1000.0, qreal(bufferValue())*bufferMax()/1000.0, m_value1, m_value0);
     } else if (m_mode == BufferBytes) {
         m_value1 += p.data.size();
     } else {
@@ -133,9 +143,9 @@ void PacketBuffer::onPut(const Packet &p)
     }
     if (!m_buffering)
         return;
-    if (checkEnough()) {
-        m_buffering = false;
-    }
+//    if (checkEnough()) {
+        m_buffering = checkEnough();
+//    }
     if (!m_buffering) { //buffering=>buffered
         m_history = ring<BufferInfo>(kAvgSize);
         return;
@@ -151,9 +161,9 @@ void PacketBuffer::onPut(const Packet &p)
 
 void PacketBuffer::onTake(const Packet &p)
 {
-    if (checkEmpty()) {
-        m_buffering = true;
-    }
+//    if (checkEmpty()) {
+        m_buffering = checkEnough();
+//    }
     if (queue.isEmpty()) {
         m_value0 = 0;
         m_value1 = 0;

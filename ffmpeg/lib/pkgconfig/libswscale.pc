@@ -1,0 +1,14 @@
+prefix=/home/Mij/ffmpeg/build/
+exec_prefix=${prefix}
+libdir=/home/Mij/ffmpeg/build//lib
+includedir=/home/Mij/ffmpeg/build//include
+
+Name: libswscale
+Description: FFmpeg image rescaling library
+Version: 5.0.102
+Requires: libavutil >= 56.8.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lswscale -lm
+Libs.private: 
+Cflags: -I${includedir}

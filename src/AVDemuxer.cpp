@@ -1136,6 +1136,12 @@ QVariantHash AVDemuxer::options() const
     return d->options;
 }
 
+bool AVDemuxer::isNetwork()
+{
+    d->checkNetwork();
+    d->network;
+}
+
 void AVDemuxer::setMediaStatus(MediaStatus status)
 {
     if (d->media_status == status)

@@ -98,7 +98,7 @@ DEPENDPATH *= $$PROJECT_SRCPATH
     }
 } else {
 	#Add your additional configuration first. e.g.
-#	win32: LIBS += -lUser32
+#        win32: LIBS += -lUser32 -lcrypto -lssl -lz -lsecur32 -liconv  -lws2_32 -lstrmiids -lvfw32 -luuid
 # The following may not need to change
     !CONFIG(plugin) {
         #TEMPLATE = lib

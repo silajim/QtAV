@@ -59,6 +59,8 @@ public:
     MediaEndAction mediaEndAction() const;
     void setMediaEndAction(MediaEndAction value);
     bool waitForStarted(int msec = -1);
+    void setNetwork(bool network);
+
 Q_SIGNALS:
     void requestClockPause(bool value);
     void mediaStatusChanged(QtAV::MediaStatus);
@@ -106,6 +108,8 @@ private:
     int clock_type; // change happens in different threads(direct connection)
     friend class SeekTask;
     friend class stepBackwardTask;
+    qreal remainingTime;
+    bool m_network=false;
 };
 
 } //namespace QtAV

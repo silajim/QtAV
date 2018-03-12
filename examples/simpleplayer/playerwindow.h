@@ -23,6 +23,7 @@
 
 #include <QWidget>
 #include <QtAV>
+#include <QPlainTextEdit>
 
 QT_BEGIN_NAMESPACE
 class QSlider;
@@ -38,6 +39,14 @@ public Q_SLOTS:
     void seekBySlider(int value);
     void seekBySlider();
     void playPause();
+    void positionChanged(qint64 value);
+    void started();
+    void notifyIntervalChanged();
+    void bufferChanged(qreal value);
+    void loaded();
+    void stateChanged(QtAV::AVPlayer::State state);
+    void mediaStatusChanged(QtAV::MediaStatus status);
+    void openUrl();
 private Q_SLOTS:
     void updateSlider(qint64 value);
     void updateSlider();
@@ -50,6 +59,8 @@ private:
     QPushButton *m_openBtn;
     QPushButton *m_playBtn;
     QPushButton *m_stopBtn;
+    QPushButton *m_urlBtn;
+    QPlainTextEdit *m_output;
     int m_unit;
 };
 

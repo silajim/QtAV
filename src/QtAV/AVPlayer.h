@@ -31,6 +31,8 @@
 #include <QtAV/VideoDecoder.h>
 #include <QtAV/AVError.h>
 
+#include <QElapsedTimer>
+
 QT_BEGIN_NAMESPACE
 class QIODevice;
 QT_END_NAMESPACE
@@ -629,6 +631,7 @@ private:
     qint64 normalizedPosition(qint64 pos);
     class Private;
     QScopedPointer<Private> d;
+    QElapsedTimer bufferTimer;
 };
 } //namespace QtAV
 Q_DECLARE_METATYPE(QtAV::AVPlayer::State)

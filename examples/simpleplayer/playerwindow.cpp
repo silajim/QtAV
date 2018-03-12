@@ -24,14 +24,19 @@
 #include <QLayout>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QInputDialog>
+#include <QPlainTextEdit>
+#include <examples/videocapture/playerwindow.h>
 
 using namespace QtAV;
 
 PlayerWindow::PlayerWindow(QWidget *parent) : QWidget(parent)
 {
     m_unit = 1000;
-    setWindowTitle(QString::fromLatin1("QtAV simple player example"));
+    //setWindowTitle(QString::fromLatin1("QtAV simple player example"));
     m_player = new AVPlayer(this);
+    m_player->setBufferMode(QtAV::BufferBytes);
+
     QVBoxLayout *vl = new QVBoxLayout();
     setLayout(vl);
     m_vo = new VideoOutput(this);
@@ -41,26 +46,81 @@ PlayerWindow::PlayerWindow(QWidget *parent) : QWidget(parent)
     }
     m_player->setRenderer(m_vo);
     vl->addWidget(m_vo->widget());
+
     m_slider = new QSlider();
     m_slider->setOrientation(Qt::Horizontal);
     connect(m_slider, SIGNAL(sliderMoved(int)), SLOT(seekBySlider(int)));
     connect(m_slider, SIGNAL(sliderPressed()), SLOT(seekBySlider()));
-    connect(m_player, SIGNAL(positionChanged(qint64)), SLOT(updateSlider(qint64)));
-    connect(m_player, SIGNAL(started()), SLOT(updateSlider()));
-    connect(m_player, SIGNAL(notifyIntervalChanged()), SLOT(updateSliderUnit()));
+
+    connect(m_player, SIGNAL(started()), SLOT(started()));
+    connect(m_player, SIGNAL(bufferProgressChanged(qreal)), SLOT(bufferChanged(qreal)));
+    connect(m_player, SIGNAL(loaded()), SLOT(loaded()));
+    connect(m_player, SIGNAL(stateChanged(QtAV::AVPlayer::State)), SLOT(stateChanged(QtAV::AVPlayer::State)));
+    connect(m_player, SIGNAL(notifyIntervalChanged()), SLOT(notifyIntervalChanged()));
+    connect(m_player, SIGNAL(positionChanged(qint64)), SLOT(positionChanged(qint64)));
+    connect(m_player, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), SLOT(mediaStatusChanged(QtAV::MediaStatus)));
 
     vl->addWidget(m_slider);
     QHBoxLayout *hb = new QHBoxLayout();
     vl->addLayout(hb);
+    m_urlBtn = new QPushButton(tr("Url"));
     m_openBtn = new QPushButton(tr("Open"));
     m_playBtn = new QPushButton(tr("Play/Pause"));
     m_stopBtn = new QPushButton(tr("Stop"));
+    hb->addWidget(m_urlBtn);
     hb->addWidget(m_openBtn);
     hb->addWidget(m_playBtn);
     hb->addWidget(m_stopBtn);
+    connect(m_urlBtn, SIGNAL(clicked()), SLOT(openUrl()));
     connect(m_openBtn, SIGNAL(clicked()), SLOT(openMedia()));
     connect(m_playBtn, SIGNAL(clicked()), SLOT(playPause()));
     connect(m_stopBtn, SIGNAL(clicked()), m_player, SLOT(stop()));
+
+    m_output = new QPlainTextEdit(this);
+    vl->addWidget(m_output);
+    m_output->setFixedSize(780,180);
+}
+
+// ==== player.SLOTS ===
+void PlayerWindow::positionChanged(qint64 value){
+    //qDebug() << "player.positionChanged" << value;
+    m_output->appendPlainText(QString("player.positionChanged : ").append(QString::number(value)));
+    updateSlider(value);
+}
+void PlayerWindow::started(){
+    //qDebug() << "player.started";
+    m_output->appendPlainText("player.started");
+    updateSlider();
+}
+void PlayerWindow::notifyIntervalChanged(){
+    //qDebug() << "player.notifyIntervalChanged";
+    m_output->appendPlainText("player.notifyIntervalChanged");
+    m_unit = m_player->notifyInterval();
+    updateSlider();
+}
+void PlayerWindow::bufferChanged(qreal value){
+    //qDebug() << "player.bufferProgressChanged" << value;
+    m_output->appendPlainText(QString("player.bufferProgressChanged : ").append(QString::number(value)));
+}
+void PlayerWindow::loaded(){
+    //qDebug() << "player.loaded";
+    m_output->appendPlainText("player.loaded");
+}
+void PlayerWindow::stateChanged(QtAV::AVPlayer::State state){
+    //qDebug() << "player.stateChanged" << state << "StoppedState, PlayingState, PausedState";
+    m_output->appendPlainText(QString("player.stateChanged : ").append(QString::number(state)));
+}
+void PlayerWindow::mediaStatusChanged(QtAV::MediaStatus status){
+    //qDebug() << "player.mediaStatusChanged" << status << "UnknownMediaStatus, NoMedia, LoadingMedia, LoadedMedia, StalledMedia, 'BufferingMedia', 'BufferedMedia', EndOfMedia, InvalidMedia";
+    m_output->appendPlainText(QString("player.mediaStatusChanged : ").append(QString::number(status)));
+}
+
+// =====================================================
+void PlayerWindow::openUrl()
+{
+    bool ok;
+    QString file = QInputDialog::getText(this,"Enter Url","Url",QLineEdit::Normal,"",&ok);
+    m_player->play(file);
 }
 
 void PlayerWindow::openMedia()
@@ -91,20 +151,15 @@ void PlayerWindow::playPause()
     }
     m_player->pause(!m_player->isPaused());
 }
+void PlayerWindow::updateSlider(){
+    updateSlider(m_player->position());
+}
 
-void PlayerWindow::updateSlider(qint64 value)
-{
+void PlayerWindow::updateSliderUnit(){
+    updateSlider(m_player->position());
+}
+void PlayerWindow::updateSlider(qint64 value){
     m_slider->setRange(0, int(m_player->duration()/m_unit));
     m_slider->setValue(int(value/m_unit));
 }
 
-void PlayerWindow::updateSlider()
-{
-    updateSlider(m_player->position());
-}
-
-void PlayerWindow::updateSliderUnit()
-{
-    m_unit = m_player->notifyInterval();
-    updateSlider();
-}

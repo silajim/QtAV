@@ -77,6 +77,9 @@ public:
      */
     qreal bufferSpeed() const;
     qreal bufferSpeedInBytes() const;
+
+    bool isFull();
+
 protected:
     bool checkEnough() const Q_DECL_OVERRIDE;
     bool checkFull() const Q_DECL_OVERRIDE;

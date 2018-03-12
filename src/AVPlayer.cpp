@@ -1237,6 +1237,7 @@ void AVPlayer::playInternal()
     }
 
     d->read_thread->setMediaEndAction(mediaEndAction());
+    d->read_thread->setNetwork(d->demuxer.isNetwork());
     d->read_thread->start();
 
     if (d->demuxer.audioCodecContext() && d->athread)
@@ -1364,8 +1365,54 @@ void AVPlayer::updateMediaStatus(QtAV::MediaStatus status)
 {
     if (status == d->status)
         return;
+
+    if(status== MediaStatus::BufferingMedia){
+
+        qDebug() << "updateMediaStatus" <<  "BufferingMedia";
+
+        bool p=true;
+//        if (!isPlaying())
+//            return;
+//        if (isPaused() == p)
+//            return;
+        audio()->pause(p);
+//        pause thread. check pause state?
+//        d->read_thread->pause(p);
+        if (d->athread)
+            d->athread->nextAndPause();
+        if (d->vthread)
+            d->vthread->nextAndPause();
+        d->clock->pause(p);
+
+//        bufferTimer.start();
+
+
+        d->state = p ? PausedState : PlayingState;
+        Q_EMIT stateChanged(d->state);
+        Q_EMIT paused(p);
+
+
+    }else if (status ==MediaStatus::BufferedMedia ){
+
+        qDebug() << "updateMediaStatus" <<  "BufferedMedia";
+
+        bool p=false;
+        audio()->pause(p);
+        if (d->athread)
+            d->athread->pause(p);
+        if (d->vthread)
+            d->vthread->pause(p);
+        d->clock->pause(p);
+
+        d->state = p ? PausedState : PlayingState;
+        Q_EMIT stateChanged(d->state);
+        Q_EMIT paused(p);
+
+    }
+
     d->status = status;
-    Q_EMIT mediaStatusChanged(d->status);
+    Q_EMIT mediaStatusChanged(d->status);   
+
 }
 
 void AVPlayer::onSeekFinished(qint64 value)
@@ -1483,6 +1530,7 @@ void AVPlayer::timerEvent(QTimerEvent *te)
         }
         // active only when playing
         const qint64 t = position();
+        qDebug() << "Timer Position" << t;
         if (d->stop_position_norm == kInvalidPosition) { // or check d->stop_position_norm < 0
             // not seekable. network stream
             Q_EMIT positionChanged(t);

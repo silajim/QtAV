@@ -407,12 +407,12 @@ config_libass {
   SOURCES *= subtitle/SubtitleProcessorLibASS.cpp
 }
 # mac is -FQTDIR we need -LQTDIR
-LIBS *= -L$$[QT_INSTALL_LIBS] -lavcodec -lavformat -lswscale -lavutil
+LIBS *= -L$$[QT_INSTALL_LIBS] -lavformat -lavcodec -lswscale -lavutil
 win32 {
   HEADERS *= utils/DirectXHelper.h
   SOURCES *= utils/DirectXHelper.cpp
 #dynamicgl: __impl__GetDC __impl_ReleaseDC __impl_GetDesktopWindow
-  !winrt:LIBS += -luser32
+  !winrt:LIBS += -luser32 -lcrypto -lssl
 }
 winrt {
   SOURCES *= io/WinRTIO.cpp
@@ -424,7 +424,7 @@ glibc_compat: *linux*: LIBS += -lrt  # do not use clock_gettime in libc, GLIBC_2
 static_ffmpeg {
 # libs needed by mac static ffmpeg. corefoundation: vda, avdevice. coca: vf_coreimage
   mac|ios: LIBS += -liconv -lbz2 -llzma -lz -framework CoreFoundation -framework Security # -framework Cocoa Cocoa is not available on ios10
-  win32: LIBS *= -lws2_32 -lstrmiids -lvfw32 -luuid
+  win32: LIBS *=  -lz -llzma  -lbz2 -lsecur32 -liconv  -lws2_32 -lstrmiids -lvfw32 -luuid
   !mac:*g++* {
     LIBS *= -lz
     QMAKE_LFLAGS *= -Wl,-Bsymbolic #link to static lib, see http://ffmpeg.org/platform.html
